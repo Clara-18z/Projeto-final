@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agenda | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div><p class="eyebrow">{{ 'Médico' if current_user.perfil == 'medico' else 'Recepção' }}</p><h1>Clínica Nexo</h1></div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('agenda.listar') }}" class="menu-item active">Agenda</a>
+          {% if current_user.perfil == 'recepcionista' %}
+            <a href="{{ url_for('solicitacoes.listar') }}" class="menu-item">Atendimentos e pagamentos</a>
+            <a href="{{ url_for('fila.listar') }}" class="menu-item">Fila</a>
+          {% elif current_user.perfil == 'medico' %}
+            <a href="{{ url_for('fila.listar') }}" class="menu-item">Minha fila</a>
+            <a href="{{ url_for('atendimento.listar') }}" class="menu-item">Prontuário</a>
+          {% endif %}
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div><p class="eyebrow">Atendimentos</p><h2>Agenda médica</h2></div>
+          <div class="topbar-actions">
+            {% if current_user.perfil == 'recepcionista' %}
+              <a class="primary-btn inline-btn" href="{{ url_for('agenda.agendar') }}">Novo agendamento</a>
+            {% endif %}
+            <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="secondary-btn">Sair</button>
+            </form>
+          </div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <section class="form-card" style="margin-bottom: 1.25rem;">
+          <form method="GET" class="user-form">
+            <div class="field-grid">
+              <label>Exibir data
+                <input type="date" name="data" value="{{ data_selecionada }}" required />
+              </label>
+            </div>
+            <div class="form-actions"><button type="submit" class="primary-btn">Consultar</button></div>
+          </form>
+        </section>
+        <section class="card-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Horário</th><th>Paciente</th><th>Serviço</th><th>Médico</th><th>Sala</th><th>Status</th>{% if current_user.perfil == 'recepcionista' %}<th>Ações</th>{% endif %}</tr></thead>
+            <tbody>
+              {% for agendamento in agendamentos %}
+                <tr>
+                  <td>{{ agendamento.data_hora.strftime('%H:%M') }}</td>
+                  <td>{{ agendamento.paciente.nome_completo }}</td>
+                  <td>{{ agendamento.solicitacao.servico.nome }}</td>
+                  <td>{{ agendamento.medico.nome_exibicao }}</td>
+                  <td>{{ agendamento.sala.nome }}</td>
+                  <td><span class="status-badge {{ 'ativo' if agendamento.status == 'agendado' else 'inativo' }}">{{ agendamento.status }}</span></td>
+                  {% if current_user.perfil == 'recepcionista' %}
+                    <td class="actions-cell">
+                      {% if agendamento.status == 'agendado' and not agendamento.senha_vinculo %}
+                        <form method="POST" action="{{ url_for('agenda.cancelar', agendamento_id=agendamento.id) }}">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                          <button type="submit" class="table-button">Cancelar</button>
+                        </form>
+                      {% endif %}
+                    </td>
+                  {% endif %}
+                </tr>
+              {% else %}
+                <tr><td colspan="{{ 7 if current_user.perfil == 'recepcionista' else 6 }}">Nenhum agendamento para esta data.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

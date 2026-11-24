@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Financeiro | Clínica Nexo{% endblock %}
+
+{% block content %}
+  <div class="dashboard-shell">
+    <aside class="dashboard-sidebar">
+      <div class="brand-block compact">
+        <div class="brand-logo">CN</div>
+        <div><p class="eyebrow">Financeiro</p><h1>Clínica Nexo</h1></div>
+      </div>
+      <nav class="menu">
+        <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+        <a href="{{ url_for('financeiro.index') }}" class="menu-item active">Caixa e pagamentos</a>
+      </nav>
+    </aside>
+    <main class="dashboard-main">
+      <header class="topbar dashboard-topbar">
+        <div>
+          <p class="eyebrow">Operação financeira</p>
+          <h2>Caixa e pagamentos</h2>
+        </div>
+        <div class="topbar-actions">
+          <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <button type="submit" class="secondary-btn">Sair</button>
+          </form>
+        </div>
+      </header>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-group">
+            {% for category, message in messages %}
+              <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <section class="stats-grid">
+        <article class="stat-card accent">
+          <span class="label">Total recebido hoje</span>
+          <strong>R$ {{ '%.2f'|format(total_recebido_hoje)|replace('.', ',') }}</strong>
+          <small>Pagamentos validados hoje</small>
+        </article>
+        <article class="stat-card">
+          <span class="label">Solicitações aguardando pagamento</span>
+          <strong>{{ total_pendentes }}</strong>
+          <small>Pendentes de validação financeira</small>
+        </article>
+      </section>
+
+      <section class="card-table-wrap">
+        <div class="table-section-heading">
+          <div>
+            <p class="eyebrow">Atendimentos agendados para hoje</p>
+            <h3>Agendamentos aguardando emissão de senha</h3>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Horário</th>
+              <th>Paciente</th>
+              <th>Serviço</th>
+              <th>Médico / Sala</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for agendamento in agendamentos_aguardando_senha %}
+              <tr>
+                <td>{{ agendamento.data_hora.strftime('%H:%M') }}</td>
+                <td>{{ agendamento.paciente.nome_completo }}</td>
+                <td>{{ agendamento.solicitacao.servico.nome }}</td>
+                <td>{{ agendamento.medico.nome_exibicao }} / {{ agendamento.sala.nome }}</td>
+                <td>
+                  <form
+                    method="POST"
+                    action="{{ url_for('fila.emitir', agendamento_id=agendamento.id) }}"
+                    class="payment-confirm-form"
+                  >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    {% if politica_prioridade and politica_prioridade.aprovada %}
+                      <label>
+                        Categoria prioritária (se aplicável)
+                        <select name="categoria_prioridade">
+                          <option value="">Normal</option>
+                          {% for codigo, nome in categorias_prioridade.items() %}
+                            {% if codigo in politica_prioridade.categorias_habilitadas %}
+                              <option value="{{ codigo }}">{{ nome }}</option>
+                            {% endif %}
+                          {% endfor %}
+                        </select>
+                      </label>
+                      <label>
+                        Data da doação (somente doador de sangue)
+                        <input type="date" name="data_doacao" />
+                      </label>
+                      <label class="checkbox-field">
+                        <input type="checkbox" name="comprovacao_conferida" />
+                        Comprovação necessária conferida pelo financeiro
+                      </label>
+                    {% endif %}
+                    <button type="submit" class="primary-btn">Emitir senha</button>
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="5">Não há agendamentos de hoje aguardando senha.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card-table-wrap">
+        <div class="table-section-heading">
+          <div>
+            <p class="eyebrow">Senhas emitidas hoje</p>
+            <h3>Senhas emitidas</h3>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Senha</th>
+              <th>Paciente</th>
+              <th>Médico / Sala</th>
+              <th>Horário do atendimento</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for senha in senhas_emitidas_hoje %}
+              {% set agendamento = senha.vinculo_agendamento.agendamento %}
+              <tr>
+                <td><strong class="status-badge ativo">{{ senha.codigo_exibicao }}</strong></td>
+                <td>{{ senha.paciente.nome_completo }}</td>
+                <td>{{ agendamento.medico.nome_exibicao }} / {{ agendamento.sala.nome }}</td>
+                <td>{{ agendamento.data_hora.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>
+                  <a
+                    class="table-link"
+                    href="{{ url_for('fila.imprimir', senha_id=senha.id) }}"
+                    target="_blank"
+                    rel="noopener"
+                  >Imprimir senha</a>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="5">Nenhuma senha foi emitida após pagamento hoje.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card-table-wrap">
+        <div class="table-section-heading">
+          <div>
+            <p class="eyebrow">Fila financeira</p>
+            <h3>Solicitações aguardando pagamento</h3>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Paciente</th>
+              <th>Médico responsável / especialidade</th>
+              <th>Serviço</th>
+              <th>Valor</th>
+              <th>Confirmar pagamento</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for solicitacao in solicitacoes %}
+              <tr>
+                <td>{{ solicitacao.codigo }}</td>
+                <td>{{ solicitacao.paciente.nome_completo }}</td>
+                <td>
+                  {% if solicitacao.medico %}
+                    <strong>{{ solicitacao.medico.nome_exibicao }}</strong>
+                    <br /><small>{{ solicitacao.medico.especialidade.nome }}</small>
+                  {% else %}
+                    <strong>Médico a definir</strong>
+                    {% if solicitacao.especialidade %}
+                      <br /><small>{{ solicitacao.especialidade.nome }}</small>
+                    {% endif %}
+                  {% endif %}
+                </td>
+                <td>{{ solicitacao.servico.nome }}</td>
+                <td>R$ {{ '%.2f'|format(solicitacao.valor_snapshot)|replace('.', ',') }}</td>
+                <td>
+                  <form
+                    method="POST"
+                    action="{{ url_for('financeiro.confirmar_pagamento', solicitacao_id=solicitacao.id) }}"
+                    class="payment-confirm-form"
+                  >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <label>
+                      Forma
+                      <select name="forma_pagamento" required>
+                        <option value="">Selecione</option>
+                        {% for forma in formas_pagamento %}
+                          <option value="{{ forma }}">{{ forma }}</option>
+                        {% endfor %}
+                      </select>
+                    </label>
+                    <label>
+                      Referência (opcional)
+                      <input type="text" name="referencia" maxlength="80" />
+                    </label>
+                    <label>
+                      Observação (opcional)
+                      <input type="text" name="observacao" />
+                    </label>
+                    <button type="submit" class="primary-btn">Confirmar e liberar</button>
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="6">Não há solicitações aguardando pagamento.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+{% endblock %}

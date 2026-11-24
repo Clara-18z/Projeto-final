@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% if usuario %}Editar usuário{% else %}Novo usuário{% endif %} | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div>
+            <p class="eyebrow">Administração</p>
+            <h1>Clínica Nexo</h1>
+          </div>
+        </div>
+
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('usuarios.listar') }}" class="menu-item active">Usuários</a>
+        </nav>
+      </aside>
+
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div>
+            <p class="eyebrow">Cadastro</p>
+            <h2>{% if usuario %}Editar usuário{% else %}Novo usuário{% endif %}</h2>
+          </div>
+          <div class="topbar-actions">
+            <a class="secondary-btn" href="{{ url_for('usuarios.listar') }}">Voltar</a>
+          </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <section class="form-card">
+          <form method="POST" class="user-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="field-grid">
+              <label>
+                Nome completo
+                <input type="text" name="nome_completo" value="{{ usuario.nome_completo if usuario else '' }}" required />
+              </label>
+
+              <label>
+                E-mail
+                <input type="email" name="email" value="{{ usuario.email if usuario else '' }}" required />
+              </label>
+
+              <label>
+                Nome de usuário
+                <input type="text" name="username" value="{{ usuario.username if usuario else '' }}" required />
+              </label>
+
+              <label>
+                Perfil
+                <select name="perfil" required>
+                  {% for perfil, nome_perfil in perfis %}
+                    <option value="{{ perfil }}" {% if (usuario and usuario.perfil == perfil) or (not usuario and loop.first) %}selected{% endif %}>{{ nome_perfil }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+
+              <label>
+                Senha {% if usuario %}(opcional para manter a atual){% endif %}
+                <input type="password" name="senha" {% if not usuario %}required{% endif %} />
+              </label>
+
+              <label class="checkbox-field">
+                <input type="checkbox" name="ativo" {% if not usuario or usuario.ativo %}checked{% endif %} />
+                Usuário ativo
+              </label>
+            </div>
+
+            <div class="permissions-card">
+              <h3>Permissões</h3>
+              <div class="permissions-grid">
+                {% for permissao in permissoes %}
+                  <label class="permission-item">
+                    <input
+                      type="checkbox"
+                      name="permissoes"
+                      value="{{ permissao.id }}"
+                      data-permission="{{ permissao.codigo }}"
+                      {% if usuario and permissao in usuario.permissoes %}checked{% endif %}
+                    />
+                    {{ permissao.nome }}
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="primary-btn">Salvar</button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+    <script>
+      const permissionsByProfile = {{ permissoes_por_perfil|tojson }};
+      const profileSelect = document.querySelector('select[name="perfil"]');
+      const permissionItems = document.querySelectorAll(".permission-item");
+
+      function updatePermissions() {
+        const allowed = permissionsByProfile[profileSelect.value] || [];
+        permissionItems.forEach((item) => {
+          const checkbox = item.querySelector('input[name="permissoes"]');
+          const visible = allowed.includes(checkbox.dataset.permission);
+          item.hidden = !visible;
+          checkbox.disabled = !visible;
+          if (!visible) checkbox.checked = false;
+        });
+      }
+
+      profileSelect.addEventListener("change", updatePermissions);
+      updatePermissions();
+    </script>
+  </body>
+</html>

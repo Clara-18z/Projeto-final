@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solicitações | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div>
+            <p class="eyebrow">Atendimento</p>
+            <h1>Clínica Nexo</h1>
+          </div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('solicitacoes.listar') }}" class="menu-item active">Atendimentos e pagamentos</a>
+          <a href="{{ url_for('pacientes.listar') }}" class="menu-item">Pacientes</a>
+          <a href="{{ url_for('agenda.listar') }}" class="menu-item">Agenda</a>
+          <a href="{{ url_for('fila.listar') }}" class="menu-item">Fila</a>
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div>
+            <p class="eyebrow">Fluxo de atendimento</p>
+            <h2>Atendimentos e pagamentos</h2>
+          </div>
+          <div class="topbar-actions">
+            <a class="primary-btn inline-btn" href="{{ url_for('solicitacoes.nova') }}">Novo atendimento</a>
+            <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="secondary-btn">Sair</button>
+            </form>
+          </div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <section class="card-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Paciente</th>
+                <th>Serviço</th>
+                <th>Médico responsável</th>
+                <th>Valor</th>
+                <th>Status</th>
+                <th>Pagamento</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for solicitacao in solicitacoes %}
+                <tr>
+                  <td>{{ solicitacao.codigo }}</td>
+                  <td>{{ solicitacao.paciente.nome_completo }}</td>
+                  <td>{{ solicitacao.servico.nome }}</td>
+                  <td>{{ solicitacao.medico.nome_exibicao if solicitacao.medico else 'A definir' }}</td>
+                  <td>R$ {{ '%.2f'|format(solicitacao.valor_snapshot)|replace('.', ',') }}</td>
+                  <td>
+                    <span class="status-badge {{ 'ativo' if solicitacao.status == 'confirmado' else 'inativo' }}">
+                      {{
+                        {
+                          'aguardando_pagamento': 'Aguardando pagamento',
+                          'confirmado': 'Pagamento confirmado',
+                          'agendado': 'Agendado',
+                          'em_atendimento': 'Em atendimento',
+                          'concluido': 'Concluído',
+                          'cancelado': 'Cancelado'
+                        }.get(solicitacao.status, solicitacao.status)
+                      }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if solicitacao.validacao_pagamento %}
+                      {{ solicitacao.validacao_pagamento.referencia_financeira }}
+                    {% else %}
+                      Aguardando validação pelo financeiro
+                    {% endif %}
+                  </td>
+                  <td class="actions-cell">
+                    {% if solicitacao.status == 'confirmado' and solicitacao.validacao_pagamento %}
+                      <a class="table-link" href="{{ url_for('agenda.agendar') }}">Agendar atendimento</a>
+                    {% elif solicitacao.agendamento and solicitacao.agendamento.status != 'cancelado' %}
+                      {% if solicitacao.agendamento.senha_vinculo %}
+                        <a class="table-link" href="{{ url_for('fila.imprimir', senha_id=solicitacao.agendamento.senha_vinculo.senha_id) }}">Imprimir senha</a>
+                      {% else %}
+                        <a class="table-link" href="{{ url_for('agenda.listar', data=solicitacao.agendamento.data_hora.date().isoformat()) }}">Ver agenda</a>
+                      {% endif %}
+                    {% elif not solicitacao.validacao_pagamento %}
+                      <a class="table-link" href="{{ url_for('solicitacoes.documento_financeiro', solicitacao_id=solicitacao.id) }}">Imprimir documento para o financeiro</a>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

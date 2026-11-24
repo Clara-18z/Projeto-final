@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login | Clínica Nexo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="auth-layout">
+      <section class="auth-panel auth-brand">
+        <p class="eyebrow">Sistema de gestão</p>
+        <h1>Clínica Nexo</h1>
+        <p class="brand-copy">
+          Cuidado que conecta você à saúde.
+        </p>
+        <div class="brand-badges">
+          <span>Recepção</span>
+          <span>Médico</span>
+          <span>Financeiro</span>
+          <span>Administração</span>
+        </div>
+      </section>
+
+      <section class="auth-panel auth-form-panel">
+        <div class="auth-header">
+          <p class="eyebrow accent">Acesso seguro</p>
+          <h2>Entrar no sistema</h2>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form
+          method="POST"
+          class="auth-form"
+          autocomplete="off"
+          data-clear-fields="true"
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <label for="identifier">E-mail ou usuário</label>
+          <input
+            id="identifier"
+            name="identifier"
+            type="text"
+            placeholder="admin@clinicanexo.com"
+            autocomplete="off"
+            readonly
+            required
+          />
+
+          <label for="password">Senha</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            placeholder="••••••••"
+            autocomplete="off"
+            readonly
+            required
+          />
+
+          <button type="submit" class="primary-btn auth-submit">Entrar</button>
+        </form>
+      </section>
+    </div>
+    <script>
+      const loginForm = document.querySelector(".auth-form");
+      const identifierField = document.getElementById("identifier");
+      const passwordField = document.getElementById("password");
+      const clearLoginFields = () => {
+        loginForm.reset();
+        identifierField.value = "";
+        passwordField.value = "";
+      };
+      [identifierField, passwordField].forEach((field) => {
+        field.addEventListener("focus", () => field.removeAttribute("readonly"), {
+          once: true,
+        });
+      });
+      clearLoginFields();
+      window.addEventListener("pageshow", clearLoginFields);
+      window.setTimeout(clearLoginFields, 0);
+    </script>
+  </body>
+</html>

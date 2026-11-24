@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand-block">
+          <div class="brand-logo">CN</div>
+          <div>
+            <p class="eyebrow">Sistema de gestão</p>
+            <h1>Clínica Nexo</h1>
+          </div>
+        </div>
+
+        <nav class="menu" aria-label="Navegação principal">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('solicitacoes.listar') }}" class="menu-item">Recepção</a>
+          <a href="{{ url_for('clinica.medicos') }}" class="menu-item">Médicos</a>
+          <a href="{{ url_for('agenda.listar') }}" class="menu-item">Agendamentos</a>
+          <a href="{{ url_for('fila.painel_publico') }}" class="menu-item">Painel</a>
+          <a href="{{ url_for('usuarios.listar') }}" class="menu-item">Administração</a>
+        </nav>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Cuidado que conecta você à saúde</p>
+            <h2>Gestão integrada da Clínica Nexo</h2>
+          </div>
+          <a class="primary-btn" href="{{ url_for('auth.login') }}">Acessar sistema</a>
+        </header>
+
+        <section class="hero-card">
+          <div>
+            <span class="tag">Operação clínica</span>
+            <h3>Recepção, atendimento e administração em um só lugar</h3>
+            <p>
+              Acesse os fluxos de cadastro, agenda, fila e gestão da clínica
+              com controles de acesso por usuário.
+            </p>
+          </div>
+        </section>
+
+        <section class="panel-grid">
+          <article class="feature-card">
+            <h4>Recepção</h4>
+            <ul>
+              <li>Cadastro e consulta de pacientes</li>
+              <li>Solicitações e confirmação de pagamento</li>
+              <li>Fila e emissão de senhas</li>
+            </ul>
+          </article>
+
+          <article class="feature-card">
+            <h4>Atendimento</h4>
+            <ul>
+              <li>Agenda e disponibilidade médica</li>
+              <li>Fluxo de fila e chamada</li>
+              <li>Chamadas de pacientes e acompanhamento de filas</li>
+            </ul>
+          </article>
+
+          <article class="feature-card">
+            <h4>Administração</h4>
+            <ul>
+              <li>Gestão de usuários e permissões</li>
+              <li>Relatórios operacionais</li>
+              <li>Trilha de auditoria</li>
+            </ul>
+          </article>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

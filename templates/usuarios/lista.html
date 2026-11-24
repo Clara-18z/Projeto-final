@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Usuários | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div>
+            <p class="eyebrow">Administração</p>
+            <h1>Clínica Nexo</h1>
+          </div>
+        </div>
+
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('usuarios.listar') }}" class="menu-item active">Usuários</a>
+          <a href="{{ url_for('clinica.medicos') }}" class="menu-item">Médicos</a>
+        </nav>
+      </aside>
+
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div>
+            <p class="eyebrow">Gestão</p>
+            <h2>Usuários do sistema</h2>
+          </div>
+          <div class="topbar-actions">
+            <a class="primary-btn inline-btn" href="{{ url_for('usuarios.novo') }}">Novo usuário</a>
+            <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="secondary-btn">Sair</button>
+            </form>
+          </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <section class="card-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Usuário</th>
+                <th>E-mail</th>
+                <th>Perfil</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for usuario in usuarios %}
+                <tr>
+                  <td>{{ usuario.nome_completo }}</td>
+                  <td>{{ usuario.username }}</td>
+                  <td>{{ usuario.email }}</td>
+                  <td>{{ usuario.perfil }}</td>
+                  <td>
+                    <span class="status-badge {{ 'ativo' if usuario.ativo else 'inativo' }}">
+                      {{ 'Ativo' if usuario.ativo else 'Inativo' }}
+                    </span>
+                  </td>
+                  <td class="actions-cell">
+                    <a class="table-link" href="{{ url_for('usuarios.editar', usuario_id=usuario.id) }}">Editar</a>
+                    <form method="POST" action="{{ url_for('usuarios.toggle', usuario_id=usuario.id) }}">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                      <button type="submit" class="table-button">
+                        {{ 'Desativar' if usuario.ativo else 'Ativar' }}
+                      </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('usuarios.excluir', usuario_id=usuario.id) }}" onsubmit="return confirm('Excluir este usuário permanentemente?')">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                      <button type="submit" class="table-button delete-button">Excluir</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

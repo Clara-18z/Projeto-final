@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nova solicitação | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div>
+            <p class="eyebrow">Recepção</p>
+            <h1>Clínica Nexo</h1>
+          </div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('solicitacoes.listar') }}" class="menu-item active">Atendimentos e pagamentos</a>
+          <a href="{{ url_for('pacientes.listar') }}" class="menu-item">Pacientes</a>
+          <a href="{{ url_for('agenda.listar') }}" class="menu-item">Agenda</a>
+          <a href="{{ url_for('fila.listar') }}" class="menu-item">Fila</a>
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div>
+            <p class="eyebrow">Recepção</p>
+            <h2>Novo atendimento ou serviço</h2>
+          </div>
+          <div class="topbar-actions">
+            <a class="secondary-btn" href="{{ url_for('solicitacoes.listar') }}">Voltar</a>
+          </div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <section class="form-card">
+          <form method="POST" class="user-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="intake-columns">
+              <section class="intake-section">
+                <h3>Dados do paciente</h3>
+                <label>
+                  Paciente já cadastrado?
+                  <select name="paciente_id" id="paciente-id">
+                    <option value="">Não — cadastrar paciente novo</option>
+                    {% for paciente in pacientes %}
+                      <option value="{{ paciente.id }}" {% if form_data.get('paciente_id') == paciente.id|string %}selected{% endif %}>
+                        {{ paciente.nome_completo }} ({{ paciente.cpf_formatado }})
+                      </option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <div id="novo-paciente-fields" class="patient-fields">
+                  <p>Preencha os dados para cadastrar o paciente nesta etapa.</p>
+                  <div class="field-grid">
+                    <label class="full-width">
+                      Nome completo
+                      <input type="text" name="novo_nome_completo" data-new-patient-required value="{{ form_data.get('novo_nome_completo', '') }}" />
+                    </label>
+                    <label>
+                      CPF
+                      <input type="text" name="novo_cpf" maxlength="14" inputmode="numeric" placeholder="000.000.000-00" data-new-patient-required value="{{ form_data.get('novo_cpf', '') }}" />
+                    </label>
+                    <label>
+                      Data de nascimento
+                      <input type="date" name="novo_data_nascimento" data-new-patient-required value="{{ form_data.get('novo_data_nascimento', '') }}" />
+                    </label>
+                    <label>
+                      Telefone
+                      <input type="tel" name="novo_telefone" data-new-patient-required value="{{ form_data.get('novo_telefone', '') }}" />
+                    </label>
+                    <label class="full-width">
+                      Endereço
+                      <textarea name="novo_endereco" data-new-patient-required>{{ form_data.get('novo_endereco', '') }}</textarea>
+                    </label>
+                    <label class="full-width">
+                      Observações cadastrais (opcional)
+                      <input type="text" name="novo_observacoes" value="{{ form_data.get('novo_observacoes', '') }}" />
+                    </label>
+                  </div>
+                </div>
+              </section>
+
+              <section class="intake-section">
+                <h3>Dados do atendimento</h3>
+                <div class="field-grid">
+                  <label class="full-width">
+                    Consulta ou serviço solicitado
+                    <select name="servico_id" id="servico-id" required>
+                      <option value="">Selecione...</option>
+                      {% for servico in servicos %}
+                        <option value="{{ servico.id }}" data-valor="{{ '%.2f'|format(servico.valor) }}" data-especialidade="{{ servico.especialidade_id }}" {% if form_data.get('servico_id') == servico.id|string %}selected{% endif %}>
+                          {{ servico.nome }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                  <p id="servico-valor" class="notice-card full-width" aria-live="polite" hidden>
+                    <strong>Valor para informar ao paciente:</strong>
+                    <span id="servico-valor-texto"></span>
+                  </p>
+                  <label class="full-width">
+                    Médico responsável
+                    <select name="medico_id" id="medico-id" required>
+                      <option value="">Selecione...</option>
+                      {% for medico in medicos %}
+                        <option
+                          value="{{ medico.id }}"
+                          data-especialidade="{{ medico.especialidade_id }}"
+                          {% if form_data.get('medico_id') == medico.id|string %}selected{% endif %}
+                        >
+                          {{ medico.nome_exibicao }} — {{ medico.especialidade.nome }} — {{ medico.sala.nome }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                    <small id="medico-feedback" aria-live="polite">
+                      Selecione o serviço para listar os médicos da especialidade correspondente.
+                    </small>
+                  </label>
+                  <label class="full-width">
+                    Observações do atendimento (opcional)
+                    <textarea name="observacoes" rows="5" placeholder="Informações administrativas sobre o serviço solicitado...">{{ form_data.get('observacoes', '') }}</textarea>
+                  </label>
+                </div>
+              </section>
+            </div>
+
+            <div class="notice-card">
+              <strong>Pagamento realizado fora do sistema</strong>
+              <p>O médico responsável ficará identificado no atendimento e na tela do financeiro. Após salvar, imprima o encaminhamento para o paciente apresentar no setor financeiro.</p>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="primary-btn">Cadastrar atendimento e emitir documento</button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+    <script>
+      const patientSelect = document.getElementById("paciente-id");
+      const newPatientFields = document.getElementById("novo-paciente-fields");
+      const requiredPatientFields = newPatientFields.querySelectorAll("[data-new-patient-required]");
+      const serviceSelect = document.getElementById("servico-id");
+      const servicePrice = document.getElementById("servico-valor");
+      const servicePriceText = document.getElementById("servico-valor-texto");
+      const doctorSelect = document.getElementById("medico-id");
+      const doctorFeedback = document.getElementById("medico-feedback");
+
+      function updatePatientFields() {
+        const registeringNewPatient = patientSelect.value === "";
+        newPatientFields.hidden = !registeringNewPatient;
+        requiredPatientFields.forEach((field) => {
+          field.required = registeringNewPatient;
+        });
+      }
+
+      patientSelect.addEventListener("change", updatePatientFields);
+      updatePatientFields();
+
+      function updateServicePrice() {
+        const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
+        const price = selectedOption.dataset.valor;
+        servicePrice.hidden = !price;
+        servicePriceText.textContent = price ? `R$ ${price.replace(".", ",")}` : "";
+      }
+
+      serviceSelect.addEventListener("change", updateServicePrice);
+      updateServicePrice();
+
+      function updateDoctors() {
+        const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
+        const specialtyId = selectedOption.dataset.especialidade;
+        let visibleDoctors = 0;
+
+        Array.from(doctorSelect.options).forEach((option) => {
+          if (!option.value) {
+            option.hidden = false;
+            return;
+          }
+          option.hidden = !specialtyId || option.dataset.especialidade !== specialtyId;
+          if (!option.hidden) {
+            visibleDoctors += 1;
+          }
+        });
+
+        const selectedDoctor = doctorSelect.options[doctorSelect.selectedIndex];
+        if (selectedDoctor.value && selectedDoctor.hidden) {
+          doctorSelect.value = "";
+        }
+        doctorFeedback.textContent = !specialtyId
+          ? "Selecione o serviço para listar os médicos da especialidade correspondente."
+          : visibleDoctors
+            ? "Escolha o médico responsável pelo atendimento."
+            : "Não há médico ativo com sala disponível para esta especialidade.";
+      }
+
+      serviceSelect.addEventListener("change", updateDoctors);
+      updateDoctors();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Prontuários | Clínica Nexo{% endblock %}
+
+{% block content %}
+  <div class="dashboard-shell">
+    <aside class="dashboard-sidebar">
+      <div class="brand-block compact">
+        <div class="brand-logo">CN</div>
+        <div><p class="eyebrow">Médico</p><h1>Clínica Nexo</h1></div>
+      </div>
+      <nav class="menu">
+        <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+        <a href="{{ url_for('fila.listar') }}" class="menu-item">Minha fila</a>
+        <a href="{{ url_for('agenda.listar') }}" class="menu-item">Agenda</a>
+        <a href="{{ url_for('atendimento.listar') }}" class="menu-item active">Prontuário</a>
+      </nav>
+    </aside>
+    <main class="dashboard-main">
+      <header class="topbar dashboard-topbar">
+        <div>
+          <p class="eyebrow">Acesso restrito ao médico responsável</p>
+          <h2>Prontuários</h2>
+        </div>
+        <div class="topbar-actions">
+          <a class="secondary-btn" href="{{ url_for('fila.listar') }}">Minha fila</a>
+        </div>
+      </header>
+      <section class="card-table-wrap">
+        <p>Selecione <strong>Fazer prontuário</strong> para registrar a consulta. Após salvar, o registro fica disponível somente para leitura neste histórico.</p>
+        <table class="data-table">
+          <thead>
+            <tr><th>Data</th><th>Paciente</th><th>Status</th><th>Ação</th></tr>
+          </thead>
+          <tbody>
+            {% for atendimento in atendimentos %}
+              <tr>
+                <td>{{ atendimento.data_inicio.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>{{ atendimento.paciente.nome_completo }}</td>
+                <td>{{ atendimento.status.replace('_', ' ') }}</td>
+                <td class="actions-cell">
+                  {% if atendimento.status == 'em_andamento' %}
+                    <a class="table-link" href="{{ url_for('atendimento.prontuario', atendimento_id=atendimento.id) }}">Fazer prontuário</a>
+                  {% elif atendimento.prontuario %}
+                    <a class="table-link" href="{{ url_for('atendimento.prontuario', atendimento_id=atendimento.id) }}">Abrir prontuário</a>
+                  {% elif atendimento.senha and atendimento.senha.status == 'atendido' %}
+                    <a class="table-link" href="{{ url_for('atendimento.prontuario', atendimento_id=atendimento.id) }}">Fazer prontuário</a>
+                  {% else %}
+                    <span>Sem prontuário registrado</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            {% for senha in senhas_sem_atendimento %}
+              <tr>
+                <td>{{ senha.data_hora.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>{{ senha.paciente.nome_completo }}</td>
+                <td>atendido</td>
+                <td class="actions-cell">
+                  <a class="table-link" href="{{ url_for('atendimento.iniciar_para_senha', senha_id=senha.id) }}">Fazer prontuário</a>
+                </td>
+              </tr>
+            {% endfor %}
+            {% if not atendimentos and not senhas_sem_atendimento %}
+              <tr><td colspan="4">Você ainda não possui atendimentos registrados.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+{% endblock %}

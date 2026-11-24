@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% if especialidade %}Editar especialidade{% else %}Nova especialidade{% endif %} | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div>
+            <p class="eyebrow">Clínica</p>
+            <h1>Clínica Nexo</h1>
+          </div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('clinica.especialidades') }}" class="menu-item active">Especialidades</a>
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div>
+            <p class="eyebrow">Cadastro</p>
+            <h2>{% if especialidade %}Editar especialidade{% else %}Nova especialidade{% endif %}</h2>
+          </div>
+          <div class="topbar-actions">
+            <a class="secondary-btn" href="{{ url_for('clinica.especialidades') }}">Voltar</a>
+          </div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <section class="form-card">
+          <form method="POST" class="user-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="field-grid">
+              <label>
+                Nome da nova especialidade
+                <input
+                  type="text"
+                  name="nome"
+                  value="{{ request.form.get('nome', especialidade.nome if especialidade else '') }}"
+                  placeholder="Ex.: Cardiologia"
+                  maxlength="100"
+                  required
+                />
+              </label>
+              <label class="checkbox-field">
+                <input
+                  type="checkbox"
+                  name="ativa"
+                  {% if (request.method == 'POST' and request.form.get('ativa') == 'on') or (request.method != 'POST' and (not especialidade or especialidade.ativa)) %}checked{% endif %}
+                />
+                Especialidade ativa
+              </label>
+              <label class="full-width">
+                Descrição
+                <textarea name="descricao">{{ request.form.get('descricao', especialidade.descricao if especialidade and especialidade.descricao else '') }}</textarea>
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="primary-btn">Salvar</button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

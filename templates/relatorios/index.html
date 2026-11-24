@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Relatórios e Indicadores | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div><p class="eyebrow">Administração</p><h1>Clínica Nexo</h1></div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('usuarios.listar') }}" class="menu-item">Usuários</a>
+          <a href="{{ url_for('clinica.medicos') }}" class="menu-item">Médicos e estrutura</a>
+          <a href="{{ url_for('servicos.listar') }}" class="menu-item">Serviços</a>
+          <a href="{{ url_for('relatorios.index') }}" class="menu-item active">Relatórios</a>
+          <a href="{{ url_for('auditoria.listar') }}" class="menu-item">Auditoria</a>
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div>
+            <p class="eyebrow">Indicadores da clínica</p>
+            <h2>Relatórios e Indicadores</h2>
+          </div>
+          <div class="topbar-actions">
+            <a class="secondary-btn" href="{{ url_for('auth.dashboard') }}">Dashboard</a>
+            <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="secondary-btn">Sair</button>
+            </form>
+          </div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <section class="form-card report-filter">
+          <form method="GET" action="{{ url_for('relatorios.index') }}" class="user-form">
+            <div class="field-grid">
+              <label>Período
+                <select id="report-period" name="periodo">
+                  <option value="diario" {% if periodo == 'diario' %}selected{% endif %}>Diário</option>
+                  <option value="mensal" {% if periodo == 'mensal' %}selected{% endif %}>Mensal</option>
+                  <option value="anual" {% if periodo == 'anual' %}selected{% endif %}>Anual</option>
+                  <option value="personalizado" {% if periodo == 'personalizado' %}selected{% endif %}>Personalizado</option>
+                </select>
+              </label>
+              <label id="reference-date-field" class="report-date-field" {% if periodo == 'personalizado' %}hidden{% endif %}>
+                Data de referência
+                <input
+                  id="reference-date"
+                  type="date"
+                  name="data"
+                  value="{{ data_referencia }}"
+                  {% if periodo == 'personalizado' %}disabled{% endif %}
+                />
+              </label>
+              <div id="custom-date-range" class="field-grid full-width" {% if periodo != 'personalizado' %}hidden{% endif %}>
+                <label>Data inicial
+                  <input
+                    id="custom-start"
+                    type="date"
+                    name="inicio"
+                    value="{{ inicio }}"
+                    {% if periodo != 'personalizado' %}disabled{% else %}required{% endif %}
+                  />
+                </label>
+                <label>Data final
+                  <input
+                    id="custom-end"
+                    type="date"
+                    name="fim"
+                    value="{{ fim }}"
+                    {% if periodo != 'personalizado' %}disabled{% else %}required{% endif %}
+                  />
+                </label>
+              </div>
+              <label>Médico
+                <select name="medico_id">
+                  <option value="">Todos os médicos</option>
+                  {% for medico in medicos %}
+                    <option value="{{ medico.id }}" {% if medico_id == medico.id %}selected{% endif %}>
+                      {{ medico.nome_exibicao }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </label>
+            </div>
+            <div class="form-actions">
+              <a class="secondary-btn" href="{{ export_url }}">Exportar CSV</a>
+              <button type="submit" class="primary-btn">Aplicar filtros</button>
+            </div>
+          </form>
+        </section>
+
+        <p class="report-period-summary">
+          Período analisado: <strong>{{ inicio }}</strong> a <strong>{{ fim }}</strong>
+          {% if medico_id %}
+            {% for medico in medicos %}
+              {% if medico.id == medico_id %} · Médico: <strong>{{ medico.nome_exibicao }}</strong>{% endif %}
+            {% endfor %}
+          {% else %}
+            · Consolidado de todos os médicos
+          {% endif %}
+        </p>
+
+        <section class="stats-grid report-stats">
+          <article class="stat-card accent">
+            <span class="label">Atendimentos realizados</span>
+            <strong>{{ relatorio.total_atendimentos }}</strong>
+            <small>Senhas concluídas no período</small>
+          </article>
+          <article class="stat-card">
+            <span class="label">Agendamentos</span>
+            <strong>{{ relatorio.total_agendamentos }}</strong>
+            <small>Todos os status no período</small>
+          </article>
+          <article class="stat-card">
+            <span class="label">Cancelamentos</span>
+            <strong>{{ relatorio.total_cancelamentos }}</strong>
+            <small>Agendamentos cancelados</small>
+          </article>
+          <article class="stat-card">
+            <span class="label">Faltas</span>
+            <strong>{{ relatorio.total_faltas }}</strong>
+            <small>Senhas marcadas como não comparecimento</small>
+          </article>
+          <article class="stat-card">
+            <span class="label">Pacientes atendidos</span>
+            <strong>{{ relatorio.total_pacientes_atendidos }}</strong>
+            <small>Pacientes distintos com atendimento concluído</small>
+          </article>
+          <article class="stat-card">
+            <span class="label">Valores recebidos</span>
+            <strong>R$ {{ '%.2f'|format(relatorio.valor_recebido)|replace('.', ',') }}</strong>
+            <small>Confirmações oficiais no período</small>
+          </article>
+          <article class="stat-card">
+            <span class="label">Valores pendentes</span>
+            <strong>R$ {{ '%.2f'|format(relatorio.valor_pendente)|replace('.', ',') }}</strong>
+            <small>Solicitações sem validação financeira</small>
+          </article>
+        </section>
+
+        <section class="report-grid">
+          <article class="feature-card">
+            <h4>Agendamentos por status</h4>
+            <div class="report-chart" role="img" aria-label="Gráfico de agendamentos por status">
+              {% for item in relatorio.agendamentos_chart %}
+                <div class="report-bar-item">
+                  <div class="report-bar-label"><span>{{ item.label }}</span><strong>{{ item.value|int }}</strong></div>
+                  <div class="report-bar-track"><span style="width: {{ item.width }}%"></span></div>
+                </div>
+              {% else %}
+                <p class="report-empty">Sem registros no período.</p>
+              {% endfor %}
+            </div>
+            <table class="data-table">
+              <thead><tr><th>Status</th><th>Quantidade</th></tr></thead>
+              <tbody>
+                {% for status, total in relatorio.agendamentos_por_status %}
+                  <tr><td>{{ status }}</td><td>{{ total }}</td></tr>
+                {% else %}
+                  <tr><td colspan="2">Sem registros.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </article>
+
+          <article class="feature-card">
+            <h4>Produtividade por médico</h4>
+            <div class="report-chart" role="img" aria-label="Gráfico de atendimentos concluídos por médico">
+              {% for item in relatorio.produtividade_chart %}
+                <div class="report-bar-item">
+                  <div class="report-bar-label"><span>{{ item.label }}</span><strong>{{ item.value|int }}</strong></div>
+                  <div class="report-bar-track"><span style="width: {{ item.width }}%"></span></div>
+                </div>
+              {% else %}
+                <p class="report-empty">Sem médicos cadastrados.</p>
+              {% endfor %}
+            </div>
+            <table class="data-table">
+              <thead><tr><th>Médico</th><th>Agendamentos</th><th>Atendidos</th><th>Cancelamentos</th><th>Faltas</th></tr></thead>
+              <tbody>
+                {% for item in relatorio.produtividade_medicos %}
+                  <tr>
+                    <td>{{ item.nome }}</td>
+                    <td>{{ item.agendamentos }}</td>
+                    <td>{{ item.atendidos }}</td>
+                    <td>{{ item.cancelamentos }}</td>
+                    <td>{{ item.faltas }}</td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="5">Sem registros.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </article>
+
+          <article class="feature-card">
+            <h4>Horários de maior movimento</h4>
+            <p class="report-subnote">Agendamentos não cancelados, agrupados pelo horário marcado.</p>
+            <div class="report-chart" role="img" aria-label="Gráfico de movimento por horário">
+              {% for item in relatorio.horarios_chart %}
+                <div class="report-bar-item">
+                  <div class="report-bar-label"><span>{{ item.label }}</span><strong>{{ item.value|int }}</strong></div>
+                  <div class="report-bar-track"><span style="width: {{ item.width }}%"></span></div>
+                </div>
+              {% else %}
+                <p class="report-empty">Sem agendamentos no período.</p>
+              {% endfor %}
+            </div>
+            <table class="data-table">
+              <thead><tr><th>Horário</th><th>Agendamentos</th></tr></thead>
+              <tbody>
+                {% for hora, total in relatorio.horarios_de_maior_movimento %}
+                  <tr><td>{{ hora }}</td><td>{{ total }}</td></tr>
+                {% else %}
+                  <tr><td colspan="2">Sem registros.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </article>
+
+          <article class="feature-card">
+            <h4>Valores financeiros</h4>
+            <p class="report-subnote">Recebidos pela data da validação oficial; pendentes pela data da solicitação.</p>
+            <div class="report-chart" role="img" aria-label="Gráfico de valores recebidos e pendentes">
+              {% for item in relatorio.financeiro_chart %}
+                <div class="report-bar-item">
+                  <div class="report-bar-label">
+                    <span>{{ item.label }}</span>
+                    <strong>R$ {{ '%.2f'|format(item.value)|replace('.', ',') }}</strong>
+                  </div>
+                  <div class="report-bar-track"><span style="width: {{ item.width }}%"></span></div>
+                </div>
+              {% endfor %}
+            </div>
+            <table class="data-table">
+              <thead><tr><th>Situação</th><th>Valor</th></tr></thead>
+              <tbody>
+                <tr><td>Recebido (validado pelo financeiro)</td><td>R$ {{ '%.2f'|format(relatorio.valor_recebido)|replace('.', ',') }}</td></tr>
+                <tr><td>Faturamento recebido hoje</td><td>R$ {{ '%.2f'|format(relatorio.valor_recebido_hoje)|replace('.', ',') }}</td></tr>
+                <tr><td>Pendente de validação financeira</td><td>R$ {{ '%.2f'|format(relatorio.valor_pendente)|replace('.', ',') }}</td></tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="feature-card">
+            <h4>Atendimentos e senhas por status</h4>
+            <div class="report-chart" role="img" aria-label="Gráfico de atendimentos por status">
+              {% for item in relatorio.atendimentos_chart %}
+                <div class="report-bar-item">
+                  <div class="report-bar-label"><span>{{ item.label }}</span><strong>{{ item.value|int }}</strong></div>
+                  <div class="report-bar-track"><span style="width: {{ item.width }}%"></span></div>
+                </div>
+              {% else %}
+                <p class="report-empty">Sem atendimentos no período.</p>
+              {% endfor %}
+            </div>
+            <table class="data-table">
+              <thead><tr><th>Status do atendimento</th><th>Quantidade</th></tr></thead>
+              <tbody>
+                {% for status, total in relatorio.atendimentos_por_status %}
+                  <tr><td>{{ status }}</td><td>{{ total }}</td></tr>
+                {% else %}
+                  <tr><td colspan="2">Sem atendimentos no período.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            <h5>Senhas</h5>
+            <div class="report-chart" role="img" aria-label="Gráfico de faltas e status das senhas">
+              {% for item in relatorio.senhas_chart %}
+                <div class="report-bar-item">
+                  <div class="report-bar-label"><span>{{ item.label }}</span><strong>{{ item.value|int }}</strong></div>
+                  <div class="report-bar-track"><span style="width: {{ item.width }}%"></span></div>
+                </div>
+              {% else %}
+                <p class="report-empty">Sem senhas no período.</p>
+              {% endfor %}
+            </div>
+            <table class="data-table">
+              <thead><tr><th>Status</th><th>Quantidade</th></tr></thead>
+              <tbody>
+                {% for status, total in relatorio.senhas_por_status %}
+                  <tr><td>{{ status }}</td><td>{{ total }}</td></tr>
+                {% else %}
+                  <tr><td colspan="2">Sem senhas no período.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </article>
+
+          <article class="feature-card">
+            <h4>Solicitações por serviço</h4>
+            <table class="data-table">
+              <thead><tr><th>Serviço</th><th>Solicitações</th></tr></thead>
+              <tbody>
+                {% for nome, total in relatorio.solicitacoes_por_servico %}
+                  <tr><td>{{ nome }}</td><td>{{ total }}</td></tr>
+                {% else %}
+                  <tr><td colspan="2">Sem registros.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </article>
+
+          <article class="feature-card">
+            <h4>Agendamentos por dia</h4>
+            <table class="data-table">
+              <thead><tr><th>Data</th><th>Quantidade</th></tr></thead>
+              <tbody>
+                {% for dia, total in relatorio.agendamentos_por_dia %}
+                  <tr><td>{{ dia }}</td><td>{{ total }}</td></tr>
+                {% else %}
+                  <tr><td colspan="2">Sem registros.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </article>
+        </section>
+        <p class="report-note">Dados agregados dos registros da clínica; o relatório não exibe identificação de pacientes. Valores recebidos usam validações oficiais do financeiro.</p>
+      </main>
+    </div>
+    <script>
+      const periodSelect = document.getElementById("report-period");
+      const referenceDateField = document.getElementById("reference-date-field");
+      const referenceDate = document.getElementById("reference-date");
+      const customDateRange = document.getElementById("custom-date-range");
+      const customDates = [
+        document.getElementById("custom-start"),
+        document.getElementById("custom-end"),
+      ];
+
+      function updatePeriodFields() {
+        const isCustom = periodSelect.value === "personalizado";
+        referenceDateField.hidden = isCustom;
+        referenceDate.disabled = isCustom;
+        customDateRange.hidden = !isCustom;
+        customDates.forEach((input) => {
+          input.disabled = !isCustom;
+          input.required = isCustom;
+        });
+        if (!isCustom) {
+          referenceDate.required = true;
+        } else {
+          referenceDate.required = false;
+        }
+      }
+
+      periodSelect.addEventListener("change", updatePeriodFields);
+      updatePeriodFields();
+    </script>
+  </body>
+</html>

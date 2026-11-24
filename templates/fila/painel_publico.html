@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Painel de chamadas | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body class="public-panel-body">
+    <main class="public-panel" aria-live="polite">
+      <header class="public-panel-header">
+        <div class="brand-logo">CN</div>
+        <div>
+          <p class="eyebrow">Clínica Nexo</p>
+          <h1>Painel de chamadas</h1>
+        </div>
+        <div class="panel-voice-controls">
+          <span id="voice-status" class="panel-voice-status" aria-live="polite">Chamadas por voz ativadas</span>
+          <button id="voice-toggle" class="panel-voice-toggle" type="button" aria-pressed="true">
+            Silenciar voz
+          </button>
+        </div>
+      </header>
+
+      <section class="current-call-card" aria-labelledby="current-call-heading">
+        <p class="eyebrow">Atenção, paciente</p>
+        <h2 id="current-call-heading">Senha chamada</h2>
+        <div id="current-call" class="current-call-content">
+          <p class="panel-empty">Aguardando chamadas...</p>
+        </div>
+      </section>
+
+      <section class="recent-calls-section" aria-labelledby="recent-calls-heading">
+        <h2 id="recent-calls-heading">Chamadas recentes</h2>
+        <div id="recent-calls" class="recent-calls-grid">
+          <p class="panel-empty">Aguardando chamadas...</p>
+        </div>
+      </section>
+
+      <footer class="public-panel-footer">
+        <span id="panel-connection">Conectando ao painel...</span>
+        <span>Em caso de dúvida, procure a recepção.</span>
+      </footer>
+    </main>
+    <script>
+      const panelApiUrl = {{ url_for('fila.api_painel_publico')|tojson }};
+      const currentCall = document.getElementById("current-call");
+      const recentCalls = document.getElementById("recent-calls");
+      const connectionStatus = document.getElementById("panel-connection");
+      const voiceToggle = document.getElementById("voice-toggle");
+      const voiceStatus = document.getElementById("voice-status");
+      const voiceSupported =
+        "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+      let voiceEnabled = voiceSupported;
+      let lastAnnouncedCode = null;
+      let latestCall = null;
+
+      function roomLabel(room) {
+        const label = room.trim();
+        return /^sala\b/i.test(label) ? label : `Sala ${label}`;
+      }
+
+      function updateVoiceControl() {
+        voiceToggle.disabled = !voiceSupported;
+        voiceToggle.textContent = voiceEnabled ? "Silenciar voz" : "Ativar voz";
+        voiceToggle.setAttribute("aria-pressed", String(voiceEnabled));
+        if (!voiceSupported) {
+          voiceStatus.textContent = "Chamadas por voz indisponíveis neste navegador.";
+        } else if (voiceEnabled) {
+          voiceStatus.textContent = "Chamadas por voz ativadas";
+        } else {
+          voiceStatus.textContent = "Chamadas por voz silenciadas";
+        }
+      }
+
+      function announceCall(call) {
+        if (!voiceEnabled) {
+          return;
+        }
+
+        window.speechSynthesis.cancel();
+        const room = roomLabel(call.sala).replace(/^sala\s*/i, "");
+        const announcement = new SpeechSynthesisUtterance(
+          `${call.paciente}, sala ${room}.`,
+        );
+        announcement.lang = "pt-BR";
+        announcement.onerror = (event) => {
+          if (event.error === "interrupted" || event.error === "canceled") {
+            return;
+          }
+          voiceEnabled = false;
+          updateVoiceControl();
+          voiceStatus.textContent = "Não foi possível reproduzir a chamada. Ative a voz para tentar novamente.";
+        };
+        window.speechSynthesis.speak(announcement);
+      }
+
+      function createCallCard(call, prominent) {
+        const card = document.createElement("article");
+        card.className = prominent ? "call-card call-card-current" : "call-card";
+
+        const patientName = document.createElement("span");
+        patientName.className = "call-patient";
+        patientName.textContent = call.paciente;
+        card.appendChild(patientName);
+
+        const code = document.createElement("strong");
+        code.className = "call-code";
+        code.textContent = call.codigo;
+        card.appendChild(code);
+
+        const details = document.createElement("div");
+        details.className = "call-details";
+        const room = document.createElement("span");
+        room.textContent = roomLabel(call.sala);
+        const time = document.createElement("span");
+        time.textContent = `Chamado às ${call.hora}`;
+        details.append(room, time);
+        card.appendChild(details);
+        return card;
+      }
+
+      function updatePanel(data) {
+        currentCall.replaceChildren();
+        recentCalls.replaceChildren();
+        latestCall = data.chamadas[0] || null;
+
+        if (!data.chamadas.length) {
+          lastAnnouncedCode = null;
+          const empty = document.createElement("p");
+          empty.className = "panel-empty";
+          empty.textContent = "Nenhuma senha chamada no momento.";
+          currentCall.appendChild(empty);
+          recentCalls.appendChild(empty.cloneNode(true));
+        } else {
+          currentCall.appendChild(createCallCard(latestCall, true));
+          if (latestCall.codigo !== lastAnnouncedCode) {
+            lastAnnouncedCode = latestCall.codigo;
+            announceCall(latestCall);
+          }
+          data.chamadas.slice(1).forEach((call) => {
+            recentCalls.appendChild(createCallCard(call, false));
+          });
+          if (data.chamadas.length === 1) {
+            const empty = document.createElement("p");
+            empty.className = "panel-empty";
+            empty.textContent = "As próximas chamadas aparecerão aqui.";
+            recentCalls.appendChild(empty);
+          }
+        }
+
+        connectionStatus.textContent = "Painel atualizado";
+      }
+
+      async function refreshPanel() {
+        try {
+          const response = await fetch(panelApiUrl, { cache: "no-store" });
+          if (!response.ok) {
+            throw new Error(`Falha ao carregar painel (${response.status}).`);
+          }
+          updatePanel(await response.json());
+        } catch (error) {
+          connectionStatus.textContent = "Sem conexão. Tentando atualizar...";
+          console.error(error);
+        } finally {
+          window.setTimeout(refreshPanel, 1000);
+        }
+      }
+
+      voiceToggle.addEventListener("click", () => {
+        voiceEnabled = !voiceEnabled;
+        updateVoiceControl();
+        if (voiceEnabled && latestCall) {
+          announceCall(latestCall);
+        } else if (!voiceEnabled) {
+          window.speechSynthesis.cancel();
+        }
+      });
+
+      updateVoiceControl();
+      refreshPanel();
+    </script>
+  </body>
+</html>

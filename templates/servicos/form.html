@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% if servico %}Editar serviço{% else %}Novo serviço{% endif %} | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div>
+            <p class="eyebrow">Administração</p>
+            <h1>Clínica Nexo</h1>
+          </div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('servicos.listar') }}" class="menu-item active">Serviços</a>
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div>
+            <p class="eyebrow">Cadastro</p>
+            <h2>{% if servico %}Editar serviço{% else %}Novo serviço{% endif %}</h2>
+          </div>
+          <div class="topbar-actions">
+            <a class="secondary-btn" href="{{ url_for('servicos.listar') }}">Voltar</a>
+          </div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <section class="form-card">
+          <form method="POST" class="user-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="field-grid">
+              <label>
+                Nome
+                <input type="text" name="nome" value="{{ servico.nome if servico else '' }}" required />
+              </label>
+              <label>
+                Especialidade
+                <select name="especialidade_id" required>
+                  {% for especialidade in especialidades %}
+                    <option value="{{ especialidade.id }}" {% if servico and servico.especialidade_id == especialidade.id %}selected{% endif %}>{{ especialidade.nome }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                Categoria
+                <select name="categoria">
+                  <option value="Consulta" {% if servico and servico.categoria == 'Consulta' %}selected{% endif %}>Consulta</option>
+                  <option value="Exame" {% if servico and servico.categoria == 'Exame' %}selected{% endif %}>Exame</option>
+                  <option value="Outros serviços" {% if servico and servico.categoria == 'Outros serviços' %}selected{% endif %}>Outros serviços</option>
+                </select>
+              </label>
+              <label>
+                Valor (R$)
+                <input type="text" name="valor" value="{{ '%.2f'|format(servico.valor) if servico else '0.00' }}" required />
+              </label>
+              <label class="checkbox-field">
+                <input type="checkbox" name="ativo" {% if not servico or servico.ativo %}checked{% endif %} />
+                Serviço ativo
+              </label>
+              <label class="full-width">
+                Descrição
+                <textarea name="descricao">{{ servico.descricao if servico and servico.descricao else '' }}</textarea>
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="primary-btn">Salvar</button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

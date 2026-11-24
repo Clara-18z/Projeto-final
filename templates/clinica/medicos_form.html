@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% if medico %}Editar médico{% else %}Novo médico{% endif %} | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div>
+            <p class="eyebrow">Clínica</p>
+            <h1>Clínica Nexo</h1>
+          </div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('clinica.medicos') }}" class="menu-item active">Médicos</a>
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div>
+            <p class="eyebrow">Cadastro</p>
+            <h2>{% if medico %}Editar médico{% else %}Novo médico{% endif %}</h2>
+          </div>
+          <div class="topbar-actions">
+            <a class="secondary-btn" href="{{ url_for('clinica.medicos') }}">Voltar</a>
+          </div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        {% if not especialidades %}
+          <div class="flash error">
+            Cadastre uma especialidade antes de continuar: <a href="{{ url_for('clinica.especialidade_nova') }}">Adicionar especialidade</a>.
+          </div>
+        {% endif %}
+        <section class="form-card">
+          <form method="POST" class="user-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            {% set usuario_selecionado = request.form.get('usuario_id', medico.usuario_id|string if medico else '') %}
+            <div class="field-grid">
+              {% set especialidade_selecionada = request.form.get('especialidade_id', medico.especialidade_id|string if medico else '') %}
+              <label>
+                {% if medico %}Usuário vinculado{% else %}Conta existente (opcional){% endif %}
+                <select name="usuario_id" {% if medico %}required{% endif %}>
+                  {% if not medico %}
+                    <option value="" {% if not usuario_selecionado %}selected{% endif %}>Criar nova conta para este médico</option>
+                  {% endif %}
+                  {% for usuario in usuarios %}
+                    <option value="{{ usuario.id }}" {% if usuario_selecionado == usuario.id|string %}selected{% endif %}>{{ usuario.nome_completo }} ({{ usuario.username }})</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                Especialidade
+                <select name="especialidade_id" required>
+                  {% for especialidade in especialidades %}
+                    <option value="{{ especialidade.id }}" {% if especialidade_selecionada == especialidade.id|string %}selected{% endif %}>{{ especialidade.nome }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                CRM
+                <input type="text" name="crm" value="{{ request.form.get('crm', medico.crm if medico else '') }}" required />
+              </label>
+              <label>
+                Nome completo do médico
+                <input
+                  type="text"
+                  name="nome_exibicao"
+                  value="{{ request.form.get('nome_exibicao', medico.nome_exibicao if medico else '') }}"
+                  placeholder="Digite o nome do médico"
+                  maxlength="100"
+                  required
+                />
+              </label>
+              <div>
+                <span class="label">Sala e presença</span>
+                <p>Após cadastrar o médico, atribua uma sala responsável em <a href="{{ url_for('clinica.salas') }}">Salas</a>. Para chamar senhas, a presença será ativada quando ele entrar no sistema.</p>
+              </div>
+              <label class="checkbox-field">
+                <input
+                  type="checkbox"
+                  name="ativo"
+                  {% if (request.method == 'POST' and request.form.get('ativo') == 'on') or (request.method != 'POST' and (not medico or medico.ativo)) %}checked{% endif %}
+                />
+                Médico ativo
+              </label>
+            </div>
+            {% if not medico %}
+              <div id="new-account-fields" class="field-grid" {% if usuario_selecionado %}hidden{% endif %}>
+                <label>
+                  E-mail de acesso
+                  <input
+                    type="email"
+                    name="email"
+                    value="{{ request.form.get('email', '') }}"
+                    autocomplete="email"
+                    {% if not usuario_selecionado %}required{% endif %}
+                  />
+                </label>
+                <label>
+                  Nome de usuário
+                  <input
+                    type="text"
+                    name="username"
+                    value="{{ request.form.get('username', '') }}"
+                    autocomplete="username"
+                    {% if not usuario_selecionado %}required{% endif %}
+                  />
+                </label>
+                <label>
+                  Senha inicial
+                  <input
+                    type="password"
+                    name="senha"
+                    autocomplete="new-password"
+                    {% if not usuario_selecionado %}required{% endif %}
+                  />
+                </label>
+                <p class="full-width">A conta será criada com perfil Médico e permissões do perfil. Combine a senha inicial com o profissional por um canal seguro.</p>
+              </div>
+            {% endif %}
+            <div class="form-actions">
+              <button type="submit" class="primary-btn">Salvar</button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+    {% if not medico %}
+      <script>
+        const linkedUser = document.querySelector('select[name="usuario_id"]');
+        const newAccountFields = document.querySelector("#new-account-fields");
+        const newAccountInputs = newAccountFields.querySelectorAll("input");
+
+        function toggleNewAccountFields() {
+          const createAccount = !linkedUser.value;
+          newAccountFields.hidden = !createAccount;
+          newAccountInputs.forEach((input) => {
+            input.required = createAccount;
+          });
+        }
+
+        linkedUser.addEventListener("change", toggleNewAccountFields);
+        toggleNewAccountFields();
+      </script>
+    {% endif %}
+  </body>
+</html>

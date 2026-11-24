@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minha presença | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div><p class="eyebrow">Médico</p><h1>Clínica Nexo</h1></div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('agenda.listar') }}" class="menu-item">Minha agenda</a>
+          <a href="{{ url_for('agenda.presenca_medica') }}" class="menu-item active">Minha presença</a>
+          <a href="{{ url_for('fila.listar') }}" class="menu-item">Minha fila</a>
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div><p class="eyebrow">Presença no sistema</p><h2>Minha presença</h2></div>
+          <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <button type="submit" class="secondary-btn">Sair</button>
+          </form>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <section class="card-table-wrap" style="margin-bottom: 1.25rem;">
+          <h3>Status de presença</h3>
+          <p>Ao entrar no sistema, sua presença é confirmada automaticamente. Ela é necessária para chamar pacientes na fila; a seleção do médico pela recepção não depende desse status.</p>
+          <p><strong>Status:</strong> {{ 'Presença confirmada' if presenca_ativa else 'Indisponível' }}</p>
+          <p><strong>Sala:</strong> {{ sala.nome if sala else 'Sala não atribuída' }}</p>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

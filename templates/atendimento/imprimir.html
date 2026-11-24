@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prontuário e receituário | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <style>
+      @page {
+        size: A4;
+        margin: 12mm;
+      }
+    </style>
+  </head>
+  <body class="medical-print-body">
+    <div class="medical-print-actions">
+      <button type="button" class="primary-btn" onclick="window.print()">Imprimir</button>
+    </div>
+    <main class="medical-document">
+      <header class="medical-document-header">
+        <div>
+          <p class="eyebrow">Documento médico</p>
+          <h1>Clínica Nexo</h1>
+          <p>Resumo de prontuário e receituário</p>
+        </div>
+        <p class="medical-issue-date">
+          Emitido em {{ data_emissao.strftime('%d/%m/%Y às %H:%M') }}
+        </p>
+      </header>
+
+      <section class="medical-patient-details">
+        <h2>Paciente</h2>
+        <p><strong>Nome:</strong> {{ atendimento.paciente.nome_completo }}</p>
+        <p><strong>CPF:</strong> {{ atendimento.paciente.cpf_formatado }}</p>
+        <p><strong>Data de nascimento:</strong> {{ atendimento.paciente.data_nascimento.strftime('%d/%m/%Y') }}</p>
+        <p><strong>Atendimento:</strong> {{ atendimento.data_inicio.strftime('%d/%m/%Y %H:%M') }}</p>
+      </section>
+
+      {% if prontuario.queixa_principal or prontuario.sintomas or prontuario.diagnostico %}
+        <section class="medical-record-section">
+          <h2>Resumo do prontuário</h2>
+          {% if prontuario.queixa_principal %}<h3>Queixa Principal</h3><p>{{ prontuario.queixa_principal }}</p>{% endif %}
+          {% if prontuario.sintomas %}<h3>Sintomas</h3><p>{{ prontuario.sintomas }}</p>{% endif %}
+          {% if prontuario.diagnostico %}<h3>Diagnóstico</h3><p>{{ prontuario.diagnostico }}</p>{% endif %}
+        </section>
+      {% endif %}
+
+      {% if prontuario.prescricao %}
+        <section class="medical-record-section">
+          <h2>Prescrição / Receituário</h2>
+          <p>{{ prontuario.prescricao }}</p>
+        </section>
+      {% endif %}
+
+      {% if prontuario.exames_solicitados %}
+        <section class="medical-record-section">
+          <h2>Exames Solicitados</h2>
+          <p>{{ prontuario.exames_solicitados }}</p>
+        </section>
+      {% endif %}
+
+      {% if prontuario.condutas or prontuario.orientacoes %}
+        <section class="medical-record-section">
+          <h2>Orientações / Conduta</h2>
+          {% if prontuario.condutas %}<h3>Condutas</h3><p>{{ prontuario.condutas }}</p>{% endif %}
+          {% if prontuario.orientacoes %}<h3>Orientações</h3><p>{{ prontuario.orientacoes }}</p>{% endif %}
+        </section>
+      {% endif %}
+
+      <footer class="medical-document-footer">
+        <div class="medical-signature">
+          <p><strong>{{ atendimento.medico.nome_exibicao }}</strong></p>
+          <p>{{ atendimento.medico.especialidade.nome }}</p>
+          <p>CRM: {{ atendimento.medico.crm }}</p>
+        </div>
+        <div class="medical-signature-line">Assinatura e carimbo</div>
+      </footer>
+    </main>
+    <script>
+      window.addEventListener("load", () => window.print());
+    </script>
+  </body>
+</html>

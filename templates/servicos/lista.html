@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Serviços | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div>
+            <p class="eyebrow">Administração</p>
+            <h1>Clínica Nexo</h1>
+          </div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('servicos.listar') }}" class="menu-item active">Serviços</a>
+          {% if current_user.perfil == 'administrador' %}
+            <a href="{{ url_for('clinica.especialidades') }}" class="menu-item">Especialidades</a>
+          {% endif %}
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div>
+            <p class="eyebrow">Catálogo</p>
+            <h2>Serviços e preços</h2>
+          </div>
+          <div class="topbar-actions">
+            {% if current_user.perfil == 'administrador' %}
+              <a class="primary-btn inline-btn" href="{{ url_for('servicos.novo') }}">Novo serviço</a>
+            {% endif %}
+            <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="secondary-btn">Sair</button>
+            </form>
+          </div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <section class="card-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Especialidade</th>
+                <th>Valor</th>
+                <th>Status</th>
+                {% if current_user.perfil == 'administrador' %}<th>Ações</th>{% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for servico in servicos %}
+                <tr>
+                  <td>{{ servico.nome }}</td>
+                  <td>{{ servico.categoria }}</td>
+                  <td>{{ servico.especialidade.nome }}</td>
+                  <td>R$ {{ '%.2f'|format(servico.valor) }}</td>
+                  <td>
+                    <span class="status-badge {{ 'ativo' if servico.ativo else 'inativo' }}">
+                      {{ 'Ativo' if servico.ativo else 'Inativo' }}
+                    </span>
+                  </td>
+                  {% if current_user.perfil == 'administrador' %}
+                    <td class="actions-cell">
+                      <a class="table-link" href="{{ url_for('servicos.editar', servico_id=servico.id) }}">Editar</a>
+                      <form method="POST" action="{{ url_for('servicos.toggle', servico_id=servico.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <button type="submit" class="table-button">
+                          {{ 'Inativar' if servico.ativo else 'Ativar' }}
+                        </button>
+                      </form>
+                      <form method="POST" action="{{ url_for('servicos.excluir', servico_id=servico.id) }}" onsubmit="return confirm('Excluir este serviço permanentemente?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <button type="submit" class="table-button delete-button">Excluir</button>
+                      </form>
+                    </td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

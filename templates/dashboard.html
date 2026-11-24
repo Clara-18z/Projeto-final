@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div>
+            <p class="eyebrow">Painel</p>
+            <h1>Clínica Nexo</h1>
+          </div>
+        </div>
+
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item active">Dashboard</a>
+          {% if user.perfil == 'administrador' %}
+            <a href="{{ url_for('usuarios.listar') }}" class="menu-item">Usuários</a>
+            <a href="{{ url_for('clinica.medicos') }}" class="menu-item">Médicos</a>
+            <a href="{{ url_for('servicos.listar') }}" class="menu-item">Serviços</a>
+            {% if has_permission('consultar_relatorios') %}
+              <a href="{{ url_for('relatorios.index') }}" class="menu-item">Relatórios</a>
+            {% endif %}
+          {% elif user.perfil == 'recepcionista' %}
+            <a href="{{ url_for('pacientes.listar') }}" class="menu-item">Pacientes</a>
+            <a href="{{ url_for('solicitacoes.listar') }}" class="menu-item">Atendimentos e pagamentos</a>
+            <a href="{{ url_for('agenda.listar') }}" class="menu-item">Agenda</a>
+            <a href="{{ url_for('fila.listar') }}" class="menu-item">Fila</a>
+          {% elif user.perfil == 'medico' %}
+            <a href="{{ url_for('agenda.listar') }}" class="menu-item">Minha agenda</a>
+            <a href="{{ url_for('agenda.presenca_medica') }}" class="menu-item">Minha presença</a>
+            <a href="{{ url_for('fila.listar') }}" class="menu-item">Minha fila</a>
+            <a href="{{ url_for('atendimento.listar') }}" class="menu-item">Prontuário</a>
+          {% elif user.perfil == 'financeiro' %}
+            <a href="{{ url_for('financeiro.index') }}" class="menu-item">Financeiro</a>
+          {% endif %}
+          {% if user.perfil == 'administrador' and has_permission('consultar_auditoria') %}
+            <a href="{{ url_for('auditoria.listar') }}" class="menu-item">Auditoria</a>
+          {% endif %}
+        </nav>
+      </aside>
+
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div>
+            <p class="eyebrow">Sessão ativa</p>
+            <h2>Olá, {{ user.nome_completo }}</h2>
+          </div>
+          <div class="topbar-actions">
+            <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="secondary-btn">Sair</button>
+            </form>
+          </div>
+        </header>
+
+        <section class="hero-card small-card">
+          <div>
+            <span class="tag">Acesso autorizado</span>
+            <h3>Painel {{ user.perfil }}</h3>
+            <p>Acesse somente os módulos autorizados para o seu perfil na Clínica Nexo.</p>
+          </div>
+        </section>
+
+        <section class="stats-grid">
+          <article class="stat-card accent">
+            <span class="label">Perfil</span>
+            <strong>{{ user.perfil }}</strong>
+            <small>Autorizado</small>
+          </article>
+          <article class="stat-card">
+            <span class="label">Usuário</span>
+            <strong>{{ user.username }}</strong>
+            <small>Ativo</small>
+          </article>
+          <article class="stat-card">
+            <span class="label">Permissões</span>
+            <strong>{{ user.permissoes|length }}</strong>
+            <small>Disponíveis</small>
+          </article>
+          <article class="stat-card">
+            <span class="label">Status</span>
+            <strong>online</strong>
+            <small>Conectado</small>
+          </article>
+        </section>
+
+        <section class="quick-actions" aria-label="Acessos rápidos">
+          {% if user.perfil == 'recepcionista' %}
+            <a class="quick-action" href="{{ url_for('solicitacoes.nova') }}">
+              <strong>Novo atendimento</strong>
+              <span>Cadastre o paciente e o serviço em uma etapa</span>
+            </a>
+            <a class="quick-action" href="{{ url_for('solicitacoes.listar') }}">
+              <strong>Pagamentos pendentes</strong>
+              <span>Imprima guias e acompanhe a validação pelo financeiro</span>
+            </a>
+            <a class="quick-action" href="{{ url_for('agenda.listar') }}">
+              <strong>Agenda</strong>
+              <span>Consulte agendamentos</span>
+            </a>
+            <a class="quick-action" href="{{ url_for('fila.listar') }}">
+              <strong>Fila</strong>
+              <span>Confirme chegada e acompanhe as filas</span>
+            </a>
+          {% elif user.perfil == 'medico' %}
+            <a class="quick-action" href="{{ url_for('agenda.listar') }}">
+              <strong>Minha agenda</strong>
+              <span>Consulte seus atendimentos agendados</span>
+            </a>
+            <a class="quick-action" href="{{ url_for('agenda.presenca_medica') }}">
+              <strong>Minha presença</strong>
+              <span>Necessária para chamar pacientes na fila</span>
+            </a>
+            <a class="quick-action" href="{{ url_for('fila.listar') }}">
+              <strong>Minha fila</strong>
+              <span>Chame o próximo paciente da sua fila</span>
+            </a>
+            <a class="quick-action" href="{{ url_for('atendimento.listar') }}">
+              <strong>Prontuário</strong>
+              <span>Acesse os prontuários dos seus atendimentos</span>
+            </a>
+          {% elif user.perfil == 'financeiro' %}
+            <a class="quick-action" href="{{ url_for('financeiro.index') }}">
+              <strong>Caixa e pagamentos</strong>
+              <span>Valide pagamentos e libere pacientes para atendimento</span>
+            </a>
+          {% elif user.perfil == 'administrador' %}
+            <a class="quick-action" href="{{ url_for('usuarios.listar') }}">
+              <strong>Usuários e permissões</strong>
+              <span>Gerencie acessos por perfil</span>
+            </a>
+            <a class="quick-action" href="{{ url_for('clinica.medicos') }}">
+              <strong>Equipe e estrutura</strong>
+              <span>Gerencie médicos, salas e seus responsáveis</span>
+            </a>
+            <a class="quick-action" href="{{ url_for('servicos.listar') }}">
+              <strong>Serviços e preços</strong>
+              <span>Consulte ou atualize o catálogo</span>
+            </a>
+            <a class="quick-action" href="{{ url_for('fila.politica_prioridade') }}">
+              <strong>Política de prioridade</strong>
+              <span>Gerencie a aprovação institucional das categorias</span>
+            </a>
+            {% if has_permission('consultar_relatorios') %}
+              <a class="quick-action" href="{{ url_for('relatorios.index') }}">
+                <strong>Relatórios</strong>
+                <span>Acompanhe indicadores operacionais</span>
+              </a>
+            {% endif %}
+          {% endif %}
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

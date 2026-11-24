@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Especialidades | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div>
+            <p class="eyebrow">Clínica</p>
+            <h1>Clínica Nexo</h1>
+          </div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('clinica.especialidades') }}" class="menu-item active">Especialidades</a>
+          <a href="{{ url_for('clinica.medicos') }}" class="menu-item">Médicos</a>
+          <a href="{{ url_for('clinica.salas') }}" class="menu-item">Salas</a>
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div>
+            <p class="eyebrow">Configuração</p>
+            <h2>Especialidades</h2>
+          </div>
+          <div class="topbar-actions">
+            <a class="primary-btn inline-btn" href="{{ url_for('clinica.especialidade_nova') }}">Nova especialidade</a>
+            <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="secondary-btn">Sair</button>
+            </form>
+          </div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <section class="card-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for especialidade in especialidades %}
+                <tr>
+                  <td>{{ especialidade.nome }}</td>
+                  <td>{{ especialidade.descricao or '-' }}</td>
+                  <td>
+                    <span class="status-badge {{ 'ativo' if especialidade.ativa else 'inativo' }}">
+                      {{ 'Ativa' if especialidade.ativa else 'Inativa' }}
+                    </span>
+                  </td>
+                  <td class="actions-cell">
+                    <a class="table-link" href="{{ url_for('clinica.especialidade_editar', especialidade_id=especialidade.id) }}">Editar</a>
+                    <form method="POST" action="{{ url_for('clinica.especialidade_toggle', especialidade_id=especialidade.id) }}">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                      <button type="submit" class="table-button">
+                        {{ 'Inativar' if especialidade.ativa else 'Ativar' }}
+                      </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('clinica.especialidade_excluir', especialidade_id=especialidade.id) }}" onsubmit="return confirm('Excluir esta especialidade permanentemente?')">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                      <button type="submit" class="table-button delete-button">Excluir</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

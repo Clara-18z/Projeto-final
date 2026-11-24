@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% if sala %}Editar sala{% else %}Nova sala{% endif %} | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div>
+            <p class="eyebrow">Clínica</p>
+            <h1>Clínica Nexo</h1>
+          </div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('clinica.salas') }}" class="menu-item active">Salas</a>
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div>
+            <p class="eyebrow">Cadastro</p>
+            <h2>{% if sala %}Editar sala{% else %}Nova sala{% endif %}</h2>
+          </div>
+          <div class="topbar-actions">
+            <a class="secondary-btn" href="{{ url_for('clinica.salas') }}">Voltar</a>
+          </div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        {% if not medicos %}
+          <div class="flash error">
+            Não há médicos ativos sem sala atribuída para selecionar. Cadastre um novo médico para associá-lo a esta sala:
+            <a href="{{ url_for('clinica.medico_novo') }}">Adicionar médico</a>.
+          </div>
+        {% endif %}
+        <section class="form-card">
+          <form method="POST" class="user-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            {% set medico_selecionado = request.form.get('medico_id', sala.medicos[0].id|string if sala and sala.medicos else '') %}
+            <div class="field-grid">
+              <label>
+                Nome da sala
+                <input type="text" name="nome" value="{{ request.form.get('nome', sala.nome if sala else '') }}" required />
+              </label>
+              <label>
+                Setor
+                <input type="text" name="setor" value="{{ request.form.get('setor', sala.setor if sala else 'consulta') }}" />
+              </label>
+              <label>
+                Médico responsável
+                <select name="medico_id" required>
+                  <option value="">Selecione...</option>
+                  {% for medico in medicos %}
+                    <option value="{{ medico.id }}" {% if medico_selecionado == medico.id|string %}selected{% endif %}>
+                      {{ medico.nome_exibicao }} — {{ medico.especialidade.nome }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                Status
+                <select name="status">
+                  <option value="disponivel" {% if request.form.get('status', sala.status if sala else 'disponivel') == 'disponivel' %}selected{% endif %}>Disponível</option>
+                  <option value="ocupada" {% if request.form.get('status', sala.status if sala else 'disponivel') == 'ocupada' %}selected{% endif %}>Ocupada</option>
+                  <option value="indisponivel" {% if request.form.get('status', sala.status if sala else 'disponivel') == 'indisponivel' %}selected{% endif %}>Indisponível</option>
+                </select>
+              </label>
+              <label class="checkbox-field">
+                <input type="checkbox" name="ativa" {% if (request.method == 'POST' and request.form.get('ativa') == 'on') or (request.method != 'POST' and (not sala or sala.ativa)) %}checked{% endif %} />
+                Sala ativa
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="primary-btn">Salvar</button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

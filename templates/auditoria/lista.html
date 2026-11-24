@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Auditoria | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div><p class="eyebrow">Administração</p><h1>Clínica Nexo</h1></div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('relatorios.index') }}" class="menu-item">Relatórios</a>
+          <a href="{{ url_for('auditoria.listar') }}" class="menu-item active">Auditoria</a>
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div>
+            <p class="eyebrow">Acesso restrito</p>
+            <h2>Trilha de auditoria</h2>
+          </div>
+          <div class="topbar-actions">
+            <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="secondary-btn">Sair</button>
+            </form>
+          </div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <section class="form-card report-filter">
+          <form method="GET" action="{{ url_for('auditoria.listar') }}" class="user-form">
+            <div class="field-grid">
+              <label>Data inicial
+                <input type="date" name="inicio" value="{{ inicio }}" required />
+              </label>
+              <label>Data final
+                <input type="date" name="fim" value="{{ fim }}" required />
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="primary-btn">Aplicar período</button>
+            </div>
+          </form>
+        </section>
+        <section class="card-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data e hora</th>
+                <th>Usuário</th>
+                <th>Ação</th>
+                <th>Registro</th>
+                <th>IP observado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for event in pagination.items %}
+                <tr>
+                  <td>{{ event.criado_em.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                  <td>{{ event.usuario.username if event.usuario else 'Sistema' }}</td>
+                  <td>{{ event.acao.replace('_', ' ') }}</td>
+                  <td>{{ event.entidade }} #{{ event.entidade_id }}</td>
+                  <td>{{ event.ip or 'Não informado' }}</td>
+                </tr>
+              {% else %}
+                <tr><td colspan="5">Nenhum evento no período.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+        {% if pagination.pages > 1 %}
+          <nav class="form-actions" aria-label="Paginação da auditoria">
+            {% if pagination.has_prev %}
+              <a class="secondary-btn" href="{{ url_for('auditoria.listar', inicio=inicio, fim=fim, page=pagination.prev_num) }}">Anterior</a>
+            {% endif %}
+            <span>Página {{ pagination.page }} de {{ pagination.pages }}</span>
+            {% if pagination.has_next %}
+              <a class="secondary-btn" href="{{ url_for('auditoria.listar', inicio=inicio, fim=fim, page=pagination.next_num) }}">Próxima</a>
+            {% endif %}
+          </nav>
+        {% endif %}
+        <p class="report-note">A tela não exibe detalhes nem conteúdo clínico dos registros auditados.</p>
+      </main>
+    </div>
+  </body>
+</html>

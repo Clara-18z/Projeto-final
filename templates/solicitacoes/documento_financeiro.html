@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Comprovante para o financeiro {{ solicitacao.codigo }} | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body class="print-document-body">
+    <main class="print-document">
+      <header class="print-document-header">
+        <div class="brand-logo">CN</div>
+        <div>
+          <p class="eyebrow">Clínica Nexo</p>
+          <h1>Comprovante de encaminhamento ao setor financeiro</h1>
+        </div>
+      </header>
+
+      <div class="print-document-warning">
+        Este documento informa o atendimento solicitado e seu valor. <strong>Não é comprovante de pagamento nem confirmação.</strong>
+      </div>
+
+      <section class="print-document-details">
+        <p><strong>Código da solicitação:</strong> {{ solicitacao.codigo }}</p>
+        <p><strong>Data de emissão:</strong> {{ solicitacao.data_solicitacao.strftime('%d/%m/%Y %H:%M') }}</p>
+        <p><strong>Paciente:</strong> {{ solicitacao.paciente.nome_completo }}</p>
+        <p><strong>Consulta ou serviço:</strong> {{ solicitacao.servico.nome }}</p>
+        <p><strong>Médico responsável:</strong> {{ solicitacao.medico.nome_exibicao if solicitacao.medico else 'A definir' }}</p>
+        <p><strong>Categoria:</strong> {{ solicitacao.servico.categoria }}</p>
+        <p class="print-document-amount">
+          <strong>Valor a pagar:</strong>
+          R$ {{ '%.2f'|format(solicitacao.valor_snapshot)|replace('.', ',') }}
+        </p>
+      </section>
+
+      <p class="print-document-instructions">
+        Apresente este documento ao setor financeiro para realizar o pagamento. O operador financeiro registrará a confirmação diretamente no sistema.
+      </p>
+
+      <footer class="print-document-footer">
+        <span>Clínica Nexo</span>
+        <span>Documento emitido em {{ data_emissao.strftime('%d/%m/%Y %H:%M') }}</span>
+      </footer>
+
+      <div class="print-document-actions">
+        <button type="button" class="primary-btn" onclick="window.print()">Imprimir documento</button>
+        <a class="secondary-btn" href="{{ url_for('solicitacoes.listar') }}">Voltar às solicitações</a>
+      </div>
+    </main>
+  </body>
+</html>

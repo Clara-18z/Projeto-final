@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Política de prioridade | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div><p class="eyebrow">Administração</p><h1>Clínica Nexo</h1></div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('fila.politica_prioridade') }}" class="menu-item active">Política de prioridade</a>
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div><p class="eyebrow">Configuração auditável</p><h2>Política de prioridade</h2></div>
+          <div class="topbar-actions"><a class="secondary-btn" href="{{ url_for('auth.dashboard') }}">Voltar ao dashboard</a></div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <section class="form-card">
+          <p>Ative somente após aprovação formal da direção ou responsável técnico e revisão da política interna. Esta tela configura categorias; não substitui orientação jurídica ou avaliação clínica.</p>
+          <p>Para doadores de sangue, a recepção deve conferir comprovante válido por até 120 dias. Não registre diagnóstico nem faça cópia de documentos nesta tela.</p>
+          <form method="POST" class="user-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="permissions-card">
+              <h3>Categorias habilitadas</h3>
+              <div class="permissions-grid">
+                {% for code, label in categorias.items() %}
+                  <label class="permission-item">
+                    <input
+                      type="checkbox"
+                      name="categorias_habilitadas"
+                      value="{{ code }}"
+                      {% if politica and code in politica.categorias_habilitadas %}checked{% endif %}
+                    />
+                    {{ label }}
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+            <label class="checkbox-field">
+              <input type="checkbox" name="aprovada" {% if politica and politica.aprovada %}checked{% endif %} />
+              Confirmo que esta política foi aprovada formalmente pela direção ou responsável técnico
+            </label>
+            <label>Referência do registro formal de aprovação
+              <input
+                type="text"
+                name="referencia_aprovacao"
+                maxlength="100"
+                value="{{ politica.referencia_aprovacao if politica else '' }}"
+              />
+              <small>Informe uma ata, protocolo ou outro identificador; não anexe documentos com dados pessoais.</small>
+            </label>
+            {% if politica and politica.aprovada %}
+              <p>Aprovada por {{ politica.aprovada_por.nome_completo if politica.aprovada_por else 'usuário não disponível' }} em {{ politica.aprovada_em.strftime('%d/%m/%Y %H:%M') if politica.aprovada_em else 'data não disponível' }}.</p>
+              <p>Referência: {{ politica.referencia_aprovacao or 'não informada' }}</p>
+            {% else %}
+              <p>Estado atual: desativada. As senhas serão emitidas como normais.</p>
+            {% endif %}
+            <div class="form-actions"><button type="submit" class="primary-btn">Salvar política</button></div>
+          </form>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agendar consulta | Clínica Nexo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-block compact">
+          <div class="brand-logo">CN</div>
+          <div><p class="eyebrow">Recepção</p><h1>Clínica Nexo</h1></div>
+        </div>
+        <nav class="menu">
+          <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+          <a href="{{ url_for('agenda.listar') }}" class="menu-item active">Agenda</a>
+          <a href="{{ url_for('solicitacoes.listar') }}" class="menu-item">Atendimentos e pagamentos</a>
+          <a href="{{ url_for('fila.listar') }}" class="menu-item">Fila</a>
+        </nav>
+      </aside>
+      <main class="dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <div><p class="eyebrow">Agendamento</p><h2>Agendar atendimento</h2></div>
+          <div class="topbar-actions"><a class="secondary-btn" href="{{ url_for('agenda.listar') }}">Voltar à agenda</a></div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-group">
+              {% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <section class="form-card">
+          <form method="POST" class="user-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="field-grid">
+              <label class="full-width">Solicitação (pagamento confirmado)
+                <select name="solicitacao_id" id="solicitacao-id" required>
+                  <option value="">Selecione...</option>
+                  {% for solicitacao in solicitacoes %}
+                    <option value="{{ solicitacao.id }}" data-especialidade="{{ solicitacao.especialidade_id }}" {% if form_data.get('solicitacao_id') == solicitacao.id|string %}selected{% endif %}>
+                      {{ solicitacao.codigo }} — {{ solicitacao.paciente.nome_completo }} — {{ solicitacao.servico.nome }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="full-width">Data e horário
+                <input type="datetime-local" name="data_hora" id="data-hora" value="{{ form_data.get('data_hora', '') }}" required />
+                <small>Agendamentos têm duração fixa de 30 minutos e começam na hora cheia ou na meia hora. Médicos ativos da especialidade são exibidos se tiverem sala disponível e não houver conflito nesse horário.</small>
+              </label>
+              <label>Médico
+                <select name="medico_id" id="medico-id" data-selected="{{ form_data.get('medico_id', '') }}" required disabled>
+                  <option value="">Selecione primeiro a solicitação e o horário...</option>
+                </select>
+              </label>
+              <p id="sala-atribuida" class="notice-card full-width" aria-live="polite" hidden>
+                Sala do médico: <strong id="sala-atribuida-nome"></strong>
+              </p>
+              <p id="medicos-feedback" class="full-width" aria-live="polite">
+                Médicos ativos serão listados conforme a especialidade, a sala e os conflitos nesse horário.
+              </p>
+            </div>
+            <div class="form-actions"><button type="submit" class="primary-btn">Confirmar agendamento</button></div>
+          </form>
+        </section>
+      </main>
+    </div>
+    <script>
+      const requestSelect = document.getElementById("solicitacao-id");
+      const appointmentTime = document.getElementById("data-hora");
+      const doctorSelect = document.getElementById("medico-id");
+      const assignedRoom = document.getElementById("sala-atribuida");
+      const assignedRoomName = document.getElementById("sala-atribuida-nome");
+      const feedback = document.getElementById("medicos-feedback");
+      const doctorsUrl = {{ url_for('agenda.medicos_disponiveis')|tojson }};
+      let lookupVersion = 0;
+
+      function updateAssignedRoom() {
+        const selectedDoctor = doctorSelect.options[doctorSelect.selectedIndex];
+        const roomName = selectedDoctor ? selectedDoctor.dataset.sala : "";
+        assignedRoom.hidden = !roomName;
+        assignedRoomName.textContent = roomName || "";
+      }
+
+      async function updateAvailableDoctors() {
+        const currentLookup = ++lookupVersion;
+        const solicitationId = requestSelect.value;
+        const dateTime = appointmentTime.value;
+        const previousDoctor = doctorSelect.value || doctorSelect.dataset.selected;
+        doctorSelect.replaceChildren(new Option("Carregando médicos disponíveis...", ""));
+        doctorSelect.disabled = true;
+        assignedRoom.hidden = true;
+        feedback.textContent = "";
+
+        if (!solicitationId || !dateTime) {
+          doctorSelect.replaceChildren(new Option("Selecione primeiro a solicitação e o horário...", ""));
+          feedback.textContent = "Informe a solicitação e a data/hora para consultar os médicos disponíveis.";
+          return;
+        }
+
+        const query = new URLSearchParams({
+          solicitacao_id: solicitationId,
+          data_hora: dateTime,
+        });
+        try {
+          const response = await fetch(`${doctorsUrl}?${query}`);
+          if (!response.ok) {
+            throw new Error("Falha ao consultar os médicos disponíveis.");
+          }
+          const result = await response.json();
+          if (currentLookup !== lookupVersion) {
+            return;
+          }
+          doctorSelect.replaceChildren(new Option("Selecione...", ""));
+          result.medicos.forEach((doctor) => {
+            const option = new Option(`${doctor.nome} — ${doctor.sala}`, doctor.id);
+            option.dataset.sala = doctor.sala;
+            doctorSelect.add(option);
+          });
+          doctorSelect.disabled = result.medicos.length === 0;
+          if (previousDoctor && result.medicos.some((doctor) => String(doctor.id) === previousDoctor)) {
+            doctorSelect.value = previousDoctor;
+          }
+          if (result.medicos.length === 0) {
+            feedback.textContent = "Nenhum médico ativo com sala disponível para esta especialidade e horário.";
+          }
+          updateAssignedRoom();
+        } catch (error) {
+          if (currentLookup === lookupVersion) {
+            doctorSelect.replaceChildren(new Option("Não foi possível carregar os médicos.", ""));
+            feedback.textContent = error.message;
+          }
+        }
+      }
+
+      requestSelect.addEventListener("change", updateAvailableDoctors);
+      appointmentTime.addEventListener("change", updateAvailableDoctors);
+      doctorSelect.addEventListener("change", updateAssignedRoom);
+      updateAvailableDoctors();
+    </script>
+  </body>
+</html>

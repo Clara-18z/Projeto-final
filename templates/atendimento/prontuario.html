@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Prontuário | Clínica Nexo{% endblock %}
+
+{% block content %}
+  <div class="dashboard-shell">
+    <aside class="dashboard-sidebar">
+      <div class="brand-block compact">
+        <div class="brand-logo">CN</div>
+        <div><p class="eyebrow">Médico</p><h1>Clínica Nexo</h1></div>
+      </div>
+      <nav class="menu">
+        <a href="{{ url_for('auth.dashboard') }}" class="menu-item">Dashboard</a>
+        <a href="{{ url_for('fila.listar') }}" class="menu-item active">Minha fila</a>
+        <a href="{{ url_for('agenda.listar') }}" class="menu-item">Agenda</a>
+        <a href="{{ url_for('atendimento.listar') }}" class="menu-item">Prontuário</a>
+      </nav>
+    </aside>
+    <main class="dashboard-main">
+      <header class="topbar dashboard-topbar">
+        <div>
+          <p class="eyebrow">Atendimento médico</p>
+          <h2>{% if atendimento.status == 'em_andamento' %}Prontuário do atendimento{% else %}Atendimento finalizado{% endif %}</h2>
+        </div>
+        <div class="topbar-actions">
+          <a class="secondary-btn" href="{{ url_for('fila.listar') }}">Voltar à fila</a>
+        </div>
+      </header>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-group">
+            {% for category, message in messages %}
+              <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <section class="summary-box">
+        <p><strong>Paciente:</strong> {{ atendimento.paciente.nome_completo }}</p>
+        <p><strong>CPF:</strong> {{ atendimento.paciente.cpf_formatado }}</p>
+        <p><strong>Médico:</strong> {{ atendimento.medico.nome_exibicao }}</p>
+        <p><strong>Especialidade:</strong> {{ atendimento.medico.especialidade.nome }}</p>
+        <p><strong>Início:</strong> {{ atendimento.data_inicio.strftime('%d/%m/%Y %H:%M') }}</p>
+        {% if atendimento.data_fim %}
+          <p><strong>Finalizado em:</strong> {{ atendimento.data_fim.strftime('%d/%m/%Y %H:%M') }}</p>
+        {% endif %}
+      </section>
+
+      {% if atendimento.status == 'em_andamento' or registro_retroativo %}
+        <section class="form-card">
+          <form method="POST" class="user-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="field-grid">
+              <label class="full-width">
+                Queixa Principal <span aria-hidden="true">*</span>
+                <textarea name="queixa_principal" rows="3" required>{{ form_data.get('queixa_principal', '') }}</textarea>
+              </label>
+              <label class="full-width">
+                Sintomas (opcional)
+                <textarea name="sintomas" rows="3">{{ form_data.get('sintomas', '') }}</textarea>
+              </label>
+              <label class="full-width">
+                Diagnóstico <span aria-hidden="true">*</span>
+                <textarea name="diagnostico" rows="3" required>{{ form_data.get('diagnostico', '') }}</textarea>
+              </label>
+              <label class="full-width">
+                Prescrição / Receituário (opcional)
+                <textarea name="prescricao" rows="4">{{ form_data.get('prescricao', '') }}</textarea>
+              </label>
+              <label class="full-width">
+                Exames Solicitados (opcional)
+                <textarea name="exames_solicitados" rows="3">{{ form_data.get('exames_solicitados', '') }}</textarea>
+              </label>
+              <label>
+                Condutas (opcional)
+                <textarea name="condutas" rows="3">{{ form_data.get('condutas', '') }}</textarea>
+              </label>
+              <label>
+                Orientações (opcional)
+                <textarea name="orientacoes" rows="3">{{ form_data.get('orientacoes', '') }}</textarea>
+              </label>
+            </div>
+            {% if registro_retroativo %}
+              <div class="notice-card">
+                <strong>Este atendimento já foi concluído.</strong>
+                <p>O prontuário será acrescentado ao histórico sem reabrir ou alterar o status da fila.</p>
+              </div>
+            {% else %}
+              <div class="notice-card">
+                <strong>Salvar o prontuário também finaliza este atendimento.</strong>
+                <p>Depois de finalizado, o registro fica somente para leitura.</p>
+              </div>
+            {% endif %}
+            <div class="form-actions">
+              <button type="submit" class="primary-btn">Salvar prontuário</button>
+            </div>
+          </form>
+        </section>
+      {% elif prontuario %}
+        <section class="form-card">
+          <h3>Resumo do prontuário</h3>
+          <dl class="medical-record-summary">
+            <dt>Queixa Principal</dt><dd>{{ prontuario.queixa_principal }}</dd>
+            {% if prontuario.sintomas %}<dt>Sintomas</dt><dd>{{ prontuario.sintomas }}</dd>{% endif %}
+            <dt>Diagnóstico</dt><dd>{{ prontuario.diagnostico }}</dd>
+            {% if prontuario.prescricao %}<dt>Prescrição / Receituário</dt><dd>{{ prontuario.prescricao }}</dd>{% endif %}
+            {% if prontuario.exames_solicitados %}<dt>Exames Solicitados</dt><dd>{{ prontuario.exames_solicitados }}</dd>{% endif %}
+            {% if prontuario.condutas %}<dt>Condutas</dt><dd>{{ prontuario.condutas }}</dd>{% endif %}
+            {% if prontuario.orientacoes %}<dt>Orientações</dt><dd>{{ prontuario.orientacoes }}</dd>{% endif %}
+          </dl>
+          <div class="form-actions">
+            <a class="primary-btn" href="{{ url_for('atendimento.imprimir', atendimento_id=atendimento.id) }}">Imprimir Receita / Prontuário</a>
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="card-table-wrap">
+        <div class="table-section-heading">
+          <div>
+            <p class="eyebrow">Acesso restrito ao médico responsável</p>
+            <h3>Histórico de Prontuários Anteriores</h3>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr><th>Data</th><th>Médico responsável</th><th>Diagnóstico</th><th>Ação</th></tr>
+          </thead>
+          <tbody>
+            {% for registro in historico_prontuarios %}
+              <tr>
+                <td>
+                  {% set data_registro = registro.atendimento.data_fim or registro.criado_em %}
+                  {{ data_registro.strftime('%d/%m/%Y %H:%M') }}
+                </td>
+                <td>{{ registro.atendimento.medico.nome_exibicao }}</td>
+                <td>{{ registro.diagnostico }}</td>
+                <td>
+                  <a
+                    class="table-link"
+                    href="{{ url_for('atendimento.imprimir', atendimento_id=registro.atendimento_id, contexto=atendimento.id) }}"
+                    target="_blank"
+                    rel="noopener"
+                  >Imprimir Receita / Prontuário</a>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4">Não há prontuários anteriores registrados para este paciente.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+{% endblock %}
